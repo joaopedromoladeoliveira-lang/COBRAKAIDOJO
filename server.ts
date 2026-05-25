@@ -4,8 +4,9 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import { readDb, writeDb } from './server-db';
+import { readDb, writeDb, initializeDbConnection } from './server-db';
 import { User, Lesson, Tournament, ForumPost, StoreItem } from './src/types';
+import { isSupabaseConfigured, supabase, fetchSupabaseDb, saveSupabaseDb } from './supabase-server';
 
 dotenv.config();
 
@@ -47,6 +48,84 @@ app.get('/api/health', (req, res) => {
 app.get('/api/database', (req, res) => {
   const db = readDb();
   res.json(db);
+});
+
+// GET /api/supabase/status - Get current Supabase credentials and health stats
+app.get('/api/supabase/status', async (req, res) => {
+  if (!isSupabaseConfigured) {
+    return res.json({
+      configured: false,
+      message: 'Credenciais do Supabase não configuradas no arquivo .env local ou do servidor.'
+    });
+  }
+
+  try {
+    const { error } = await supabase!
+      .from('dojo_state')
+      .select('key')
+      .eq('key', 'main_data')
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      return res.json({
+        configured: true,
+        connected: false,
+        error: error.message,
+        message: 'Conectado ao Supabase, mas a tabela `dojo_state` não existe ou não pôde ser lida no momento.'
+      });
+    }
+
+    res.json({
+      configured: true,
+      connected: true,
+      message: 'Supabase conectado com sucesso! Tabela `dojo_state` verificada.'
+    });
+  } catch (err: any) {
+    res.json({
+      configured: true,
+      connected: false,
+      error: err.message || String(err),
+      message: 'Falha crítica ao tentar conectar ao Supabase.'
+    });
+  }
+});
+
+// POST /api/supabase/sync-from-cloud - Direct action to replace local db cache with cloud
+app.post('/api/supabase/sync-from-cloud', async (req, res) => {
+  if (!isSupabaseConfigured) {
+    return res.status(400).json({ error: 'Supabase não está configurado.' });
+  }
+
+  try {
+    const cloudDb = await fetchSupabaseDb();
+    if (cloudDb) {
+      writeDb(cloudDb); // writes locally and back
+      res.json({ success: true, message: 'Dados baixados e sincronizados do Supabase com sucesso!', data: cloudDb });
+    } else {
+      res.status(404).json({ error: 'Nenhum dado salvo encontrado no Supabase para sincronização.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro inesperado na sincronização.' });
+  }
+});
+
+// POST /api/supabase/sync-to-cloud - Direct action to upload current local db cache to cloud
+app.post('/api/supabase/sync-to-cloud', async (req, res) => {
+  if (!isSupabaseConfigured) {
+    return res.status(400).json({ error: 'Supabase não está configurado.' });
+  }
+
+  try {
+    const localDb = readDb();
+    const success = await saveSupabaseDb(localDb);
+    if (success) {
+      res.json({ success: true, message: 'Dados locais enviados e salvos no Supabase com sucesso!' });
+    } else {
+      res.status(500).json({ error: 'Falha ao salvar no Supabase. Verifique se criou a tabela dojo_state.' });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Erro inesperado no salvamento.' });
+  }
 });
 
 // POST /api/auth/register - Register a real user

@@ -94,6 +94,278 @@ function playSound(type: 'nav' | 'punch' | 'belt' | 'gong') {
   }
 }
 
+interface KarateLocalStorageDb {
+  users: User[];
+  lessons: Lesson[];
+  storeItems: StoreItem[];
+  tournaments: Tournament[];
+  posts: ForumPost[];
+  broadcastMessages: string[];
+}
+
+const DEFAULT_LOCAL_DB: KarateLocalStorageDb = {
+  users: [
+    {
+      id: 'student-1',
+      name: 'João Pedro M. Oliveira',
+      email: 'joaopedromoladeoliveira@gmail.com',
+      role: 'admin' as const,
+      belt: 'preta' as const,
+      xp: 850,
+      level: 15,
+      enrolledDate: '2025-01-20',
+      completedLessons: ['kihon-1', 'kata-1'],
+      certificates: ['cert-1'],
+      followersCount: 228,
+      followingCount: 42,
+      country: 'Brasil',
+      wins: 14,
+      losses: 2,
+      trophies: 3,
+      streak: 5
+    },
+    {
+      id: 'student-2',
+      name: 'Carlos Silva',
+      email: 'carlossilva@gmail.com',
+      role: 'student' as const,
+      belt: 'vermelha' as const,
+      xp: 410,
+      level: 6,
+      enrolledDate: '2025-02-14',
+      completedLessons: ['kihon-1'],
+      certificates: [],
+      followersCount: 15,
+      followingCount: 30,
+      country: 'Brasil',
+      wins: 4,
+      losses: 3,
+      trophies: 0,
+      streak: 2
+    },
+    {
+      id: 'student-3',
+      name: 'Aline Aoki',
+      email: 'alineaoki@gmail.com',
+      role: 'sensei' as const,
+      belt: 'preta' as const,
+      xp: 1240,
+      level: 22,
+      enrolledDate: '2024-05-10',
+      completedLessons: ['kihon-1', 'kata-1', 'kata-2'],
+      certificates: ['cert-lenda'],
+      followersCount: 304,
+      followingCount: 88,
+      country: 'Japão',
+      wins: 38,
+      losses: 5,
+      trophies: 6,
+      streak: 11
+    },
+    {
+      id: 'student-4',
+      name: 'Filipe Souza',
+      email: 'filipesouza@gmail.com',
+      role: 'student' as const,
+      belt: 'verde' as const,
+      xp: 610,
+      level: 9,
+      enrolledDate: '2024-09-01',
+      completedLessons: ['kihon-1', 'kihon-2'],
+      certificates: [],
+      followersCount: 22,
+      followingCount: 10,
+      country: 'Brasil',
+      wins: 8,
+      losses: 4,
+      trophies: 1,
+      streak: 3
+    }
+  ],
+  lessons: [
+    {
+      id: 'kihon-1',
+      title: 'Kihon Básico I: Choku-Zuki e Oizuki',
+      description: 'Aprenda os golpes fundamentais de impacto de punho cerrado do Karate Shotokan. O professor detalha o alinhamento corporal e o kime de explosão.',
+      category: 'Kihon' as const,
+      level: 'Iniciante' as const,
+      videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=350',
+      duration: '08:45',
+      views: 1420,
+      likes: 312,
+      exercises: ['Realizar 50 Repetições de socos Choku-Zuki focando no kime', 'Manter Hikite fechado na altura do quadril'],
+      isPremium: false,
+      instructor: 'Prof. Paulo Souza',
+      comments: [
+        { id: 'c1', userName: 'Carlos Silva', userBelt: 'vermelha', text: 'Excelente explicação, consegui ajustar a altura do cotovelo!', date: 'ontem' }
+      ]
+    },
+    {
+      id: 'kata-1',
+      title: 'Kata Heian Shodan: Passo a Passo Completo',
+      description: 'O primeiro Kata do estilo Shotokan. Indicado para o desenvolvimento de direção orbital, bases Zenkutsu-dachi sólidas e defesas Gedan-barai.',
+      category: 'Kata' as const,
+      level: 'Iniciante' as const,
+      videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=350',
+      duration: '14:20',
+      views: 2420,
+      likes: 672,
+      exercises: ['Apresentar Heian Shodan no ritmo regulado', 'Concluir todos os giros de costas com equilíbrio'],
+      isPremium: false,
+      instructor: 'Prof. Paulo Souza',
+      comments: []
+    },
+    {
+      id: 'kumite-1',
+      title: 'Kumite Avançado: Gyaku-Zuki antecipado e Esquiva',
+      description: 'Aprenda técnicas profissionais de combate olímpico com antecipação (sen-no-sen). Especial para lutadores experientes garantirem medalhas.',
+      category: 'Kumite' as const,
+      level: 'Avançado' as const,
+      videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1517438476312-10d79c07750d?auto=format&fit=crop&q=80&w=350',
+      duration: '11:10',
+      views: 740,
+      likes: 210,
+      exercises: ['Simular 20 esquivas laterais conectadas a contra-ataques instantâneos'],
+      isPremium: true,
+      instructor: 'Prof. Paulo Souza',
+      comments: []
+    },
+    {
+      id: 'defesas-1',
+      title: 'Defesa Pessoal: Contra-ataque de agarre',
+      description: 'Como reagir de forma instantânea contra tentativa de agarre de punhos ou garganta usando o cotovelo e joelhadas explosivas de autodefesa legítima.',
+      category: 'Defesa Pessoal' as const,
+      level: 'Intermediário' as const,
+      videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&q=80&w=350',
+      duration: '09:30',
+      views: 930,
+      likes: 240,
+      exercises: ['Desvencilhar-se simulado focando na base Kiba-Dachi'],
+      isPremium: false,
+      instructor: 'Sensei Cobra Kai AI',
+      comments: []
+    }
+  ],
+  storeItems: [
+    {
+      id: 'gi-shotokan',
+      name: 'Kimono Oficial Shotokan - Team Paulo Souza Heavyweight',
+      price: 280,
+      originalPrice: 340,
+      image: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=200',
+      category: 'Kimonos' as const,
+      rating: 4.9,
+      sizes: ['M1', 'M2', 'M3', 'A1', 'A2', 'A3']
+    },
+    {
+      id: 'gi-cobra',
+      name: 'Kimono Edição Limitada Cobra Kai "No Mercy" (Black)',
+      price: 360,
+      image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=200',
+      category: 'Kimonos' as const,
+      rating: 5.0,
+      sizes: ['A1', 'A2', 'A3', 'A4']
+    },
+    {
+      id: 'gloves-competition',
+      name: 'Luvas de Karatê Homologadas WKF (Kumite)',
+      price: 120,
+      image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&q=80&w=200',
+      category: 'Luvas' as const,
+      rating: 4.7,
+      sizes: ['P', 'M', 'G']
+    },
+    {
+      id: 'belt-silk',
+      name: 'Faixa Preta Especial de Seda Premium (Bordado Ouro)',
+      price: 95,
+      image: 'https://images.unsplash.com/photo-1517438476312-10d79c07750d?auto=format&fit=crop&q=80&w=200',
+      category: 'Faixas' as const,
+      rating: 5.0,
+      sizes: ['2.8m', '3.0m', '3.2m']
+    },
+    {
+      id: 'tshirt-cobra',
+      name: 'Camiseta Oficial Cobra Kai Dojo "Strike First"',
+      price: 70,
+      originalPrice: 85,
+      image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&q=80&w=200',
+      category: 'Camisetas' as const,
+      rating: 4.8,
+      sizes: ['P', 'M', 'G', 'GG']
+    },
+    {
+      id: 'bag-combat',
+      name: 'Mochila Esportiva Combat Team Paulo Souza (Impermeável)',
+      price: 150,
+      image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=200',
+      category: 'Acessórios' as const,
+      rating: 4.9,
+      sizes: ['Único']
+    }
+  ],
+  tournaments: [
+    {
+      id: 'tour-1',
+      name: 'Torneio All Valley Karate Shotokan',
+      category: 'Kumite Faixa Preta Absoluto',
+      status: 'Inscrições Abertas' as const,
+      registeredUsersCount: 12,
+      participants: ['alineaoki@gmail.com', 'joaopedromoladeoliveira@gmail.com'],
+      bracket: [
+        {
+          round: 1,
+          matches: [
+            { id: 'm1', player1: 'Aline Aoki', player2: 'Carlos Silva', score1: 3, score2: 0, winner: 'Aline Aoki' },
+            { id: 'm2', player1: 'Filipe Souza', player2: 'Sérgio Santos', score1: 2, score2: 3, winner: 'Sérgio Santos' }
+          ]
+        },
+        {
+          round: 2,
+          matches: [
+            { id: 'm3', player1: 'Aline Aoki', player2: 'Sérgio Santos', score1: undefined, score2: undefined }
+          ]
+        }
+      ],
+      country: 'USA',
+      date: 'Junho, 2026'
+    },
+    {
+      id: 'tour-2',
+      name: 'Copa Regional de Karatê Team Paulo Souza',
+      category: 'Kihon & Kata Geral',
+      status: 'Em Andamento' as const,
+      registeredUsersCount: 24,
+      participants: ['alineaoki@gmail.com'],
+      bracket: [],
+      country: 'Brasil',
+      date: 'Maio, 2026'
+    }
+  ],
+  posts: [
+    {
+      id: 'p-1',
+      userId: 'student-3',
+      userName: 'Aline Aoki',
+      userBelt: 'preta' as const,
+      content: 'Oss! Fui aprovada no exame de ábacos e kime técnico! Meu diploma oficial de Faixa Preta está emoldurado no meu quarto. Que orgulho fazer parte da Team Paulo Souza!',
+      likes: 18,
+      replies: [
+        { id: 'rep-1', userName: 'Filipe Souza', content: 'Parabéns maravilhosa! Uma inspiração para todos nós.', date: 'Há 1 hora' }
+      ],
+      date: 'Há 2 horas'
+    }
+  ],
+  broadcastMessages: [
+    "📢 ATENÇÃO ATLETAS: Exame de Graduado dojo habilitado no painel 'Formar Faixa Preta'!",
+    "🥋 EVENTO: Treino especial com Prof Paulo Souza nesta Quarta-feira!"
+  ]
+};
+
 export default function App() {
   // Configs
   const [themeMode, setThemeMode] = useState<'dark' | 'light'>('dark');
@@ -124,10 +396,44 @@ export default function App() {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [posts, setPosts] = useState<ForumPost[]>([]);
 
+  // Local static/offline state toggle
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+
+  // Helper to safely manipulate and synchronize client-side database
+  const updateLocalDb = (updater: (db: typeof DEFAULT_LOCAL_DB) => void) => {
+    const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
+    let localDb;
+    try {
+      localDb = JSON.parse(localDbStr);
+    } catch (e) {
+      localDb = DEFAULT_LOCAL_DB;
+    }
+    updater(localDb);
+    localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+    
+    // Instantly refresh states to avoid delays
+    setStudents(localDb.users);
+    setLessons(localDb.lessons);
+    setStoreItems(localDb.storeItems);
+    setTournaments(localDb.tournaments);
+    setPosts(localDb.posts);
+    setBroadcastMessages(localDb.broadcastMessages);
+    
+    if (currentUser) {
+      const matched = localDb.users.find((u: any) => u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase());
+      if (matched) {
+        setCurrentUser(matched);
+      }
+    }
+  };
+
   // Synchronize database with Express server real persistent JSON storage
   const syncDatabase = async () => {
     try {
       const res = await fetch('/api/database');
+      if (!res.ok) {
+        throw new Error(`Server status not ok: ${res.status}`);
+      }
       const data = await res.json();
       if (data) {
         if (data.users) setStudents(data.users);
@@ -149,9 +455,33 @@ export default function App() {
             setCurrentUser(matched);
           }
         }
+        setIsOfflineMode(false);
       }
     } catch (err) {
-      console.error('Failed to sync with real backend database:', err);
+      console.warn('Could not sync with the backend server database, using LocalStorage fallback mode.', err);
+      setIsOfflineMode(true);
+      
+      const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
+      let localDb;
+      try {
+        localDb = JSON.parse(localDbStr);
+      } catch (ex) {
+        localDb = DEFAULT_LOCAL_DB;
+      }
+      
+      setStudents(localDb.users);
+      setLessons(localDb.lessons);
+      setStoreItems(localDb.storeItems);
+      setTournaments(localDb.tournaments);
+      setPosts(localDb.posts);
+      setBroadcastMessages(localDb.broadcastMessages);
+      
+      if (currentUser) {
+        const matched = localDb.users?.find((u: any) => u.id === currentUser.id || u.email.toLowerCase() === currentUser.email.toLowerCase());
+        if (matched) {
+          setCurrentUser(matched);
+        }
+      }
     }
   };
 
@@ -164,7 +494,10 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: savedEmail })
       })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Restoration API not responsive');
+        return res.json();
+      })
       .then(user => {
         if (user && !user.error) {
           setCurrentUser(user);
@@ -172,17 +505,34 @@ export default function App() {
         }
       })
       .catch(err => {
-        console.error('Auto login restoration error:', err);
+        console.warn('Auto login restoration API failed, trying client local fallback recovery.');
+        const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
+        let localDb;
+        try {
+          localDb = JSON.parse(localDbStr);
+        } catch (ex) {
+          localDb = DEFAULT_LOCAL_DB;
+        }
+        const matched = localDb.users.find((u: any) => u.email.toLowerCase() === savedEmail.toLowerCase());
+        if (matched) {
+          setCurrentUser(matched);
+          setIsLoggedIn(true);
+          setIsOfflineMode(true);
+        }
       });
     }
 
     // Load initial database
     syncDatabase();
     
-    // Poll every 5 seconds for real collaborative feel
-    const interval = setInterval(syncDatabase, 5000);
+    // Poll every 5 seconds for real collaborative feel (only if online)
+    const interval = setInterval(() => {
+      if (!isOfflineMode) {
+        syncDatabase();
+      }
+    }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isOfflineMode]);
 
   // Audio trigger wrapper
   const triggerSound = (type: 'nav' | 'punch' | 'belt' | 'gong') => {
@@ -197,7 +547,7 @@ export default function App() {
     triggerSound('gong');
 
     const emailInput = authEmail.trim();
-    const emailToUse = emailInput || 'joaopedromoladeoliveira@gmail.com';
+    const emailToUse = emailInput || 'aluno@dojo.com';
     const nameToUse = authName.trim() || 'Alexandre Silva';
 
     fetch('/api/auth/register', {
@@ -205,7 +555,10 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: emailToUse, name: nameToUse })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('API registration failed');
+      return res.json();
+    })
     .then(user => {
       if (user && !user.error) {
         setCurrentUser(user);
@@ -217,7 +570,53 @@ export default function App() {
       }
     })
     .catch(err => {
-      alert('Erro de conexão ao servidor de banco de dados.');
+      console.warn('Register API unavailable, falling back to local simulation database.');
+      setIsOfflineMode(true);
+      
+      const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
+      let localDb;
+      try {
+        localDb = JSON.parse(localDbStr);
+      } catch (ex) {
+        localDb = DEFAULT_LOCAL_DB;
+      }
+      
+      let existing = localDb.users.find((u: any) => u.email.toLowerCase() === emailToUse.toLowerCase());
+      if (!existing) {
+        const isOwnerAdmin = emailToUse.toLowerCase() === 'joaopedromoladeoliveira@gmail.com' || emailToUse.toLowerCase() === 'joaopedromolaoliveira@gmail.com';
+        existing = {
+          id: 'student-' + Date.now().toString(),
+          name: nameToUse,
+          email: emailToUse.toLowerCase(),
+          role: isOwnerAdmin ? 'admin' : 'student',
+          belt: isOwnerAdmin ? 'preta' : 'branca',
+          xp: 120,
+          level: 2,
+          enrolledDate: new Date().toISOString().split('T')[0],
+          completedLessons: [],
+          certificates: [],
+          followersCount: 0,
+          followingCount: 3,
+          country: 'Brasil',
+          wins: 0,
+          losses: 0,
+          trophies: 0,
+          streak: 1
+        };
+        localDb.users.push(existing);
+        localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+      }
+      
+      setCurrentUser(existing);
+      setIsLoggedIn(true);
+      localStorage.setItem('karate_session_email', existing.email);
+      
+      setStudents(localDb.users);
+      setLessons(localDb.lessons);
+      setStoreItems(localDb.storeItems);
+      setTournaments(localDb.tournaments);
+      setPosts(localDb.posts);
+      setBroadcastMessages(localDb.broadcastMessages);
     });
   };
 
@@ -228,7 +627,10 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'joaopedromoladeoliveira@gmail.com', name: 'João Pedro M. Oliveira' })
     })
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Third-party API failed');
+      return res.json();
+    })
     .then(user => {
       if (user && !user.error) {
         setCurrentUser(user);
@@ -236,6 +638,54 @@ export default function App() {
         localStorage.setItem('karate_session_email', user.email);
         syncDatabase();
       }
+    })
+    .catch(err => {
+      console.warn('Third party register API failed, using LocalStorage authentication instead.');
+      setIsOfflineMode(true);
+      
+      const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
+      let localDb;
+      try {
+        localDb = JSON.parse(localDbStr);
+      } catch (ex) {
+        localDb = DEFAULT_LOCAL_DB;
+      }
+      
+      let existing = localDb.users.find((u: any) => u.email.toLowerCase() === 'joaopedromoladeoliveira@gmail.com');
+      if (!existing) {
+        existing = {
+          id: 'student-1',
+          name: 'João Pedro M. Oliveira',
+          email: 'joaopedromoladeoliveira@gmail.com',
+          role: 'admin',
+          belt: 'preta',
+          xp: 850,
+          level: 15,
+          enrolledDate: '2025-01-20',
+          completedLessons: ['kihon-1', 'kata-1'],
+          certificates: ['cert-1'],
+          followersCount: 228,
+          followingCount: 42,
+          country: 'Brasil',
+          wins: 14,
+          losses: 2,
+          trophies: 3,
+          streak: 5
+        };
+        localDb.users.push(existing);
+        localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+      }
+      
+      setCurrentUser(existing);
+      setIsLoggedIn(true);
+      localStorage.setItem('karate_session_email', existing.email);
+      
+      setStudents(localDb.users);
+      setLessons(localDb.lessons);
+      setStoreItems(localDb.storeItems);
+      setTournaments(localDb.tournaments);
+      setPosts(localDb.posts);
+      setBroadcastMessages(localDb.broadcastMessages);
     });
   };
 
@@ -250,6 +700,16 @@ export default function App() {
 
   // Progression handles
   const handleAddXP = async (xpGain: number) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u) {
+          u.xp += xpGain;
+          u.level = Math.max(u.level, Math.floor(u.xp / 150) + 1);
+        }
+      });
+      return;
+    }
     try {
       const res = await fetch('/api/user/add_xp', {
         method: 'POST',
@@ -262,12 +722,26 @@ export default function App() {
         syncDatabase();
       }
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u) {
+          u.xp += xpGain;
+          u.level = Math.max(u.level, Math.floor(u.xp / 150) + 1);
+        }
+      });
     }
   };
 
   const handleGraduateBelt = async (belt: User['belt']) => {
     triggerSound('belt');
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u) u.belt = belt;
+      });
+      alert(`OSS! Parabéns pela graduação na nova faixa: ${belt.toUpperCase()}!`);
+      return;
+    }
     try {
       const res = await fetch('/api/user/graduate_belt', {
         method: 'POST',
@@ -281,13 +755,28 @@ export default function App() {
         alert(`OSS! Parabéns pela graduação na nova faixa: ${belt.toUpperCase()}!`);
       }
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u) u.belt = belt;
+      });
+      alert(`OSS! Parabéns pela graduação na nova faixa: ${belt.toUpperCase()}!`);
     }
   };
 
   // Netflix Lessons handlers
   const handleLessonCompleted = async (lessonId: string) => {
     if (currentUser.completedLessons.includes(lessonId)) return;
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u && !u.completedLessons.includes(lessonId)) {
+          u.completedLessons.push(lessonId);
+        }
+      });
+      await handleAddXP(80);
+      alert('Parabéns! Aula marcada como concluída. +80 XP!');
+      return;
+    }
     try {
       const res = await fetch('/api/user/complete_lesson', {
         method: 'POST',
@@ -302,7 +791,14 @@ export default function App() {
         alert('Parabéns! Aula marcada como concluída. +80 XP!');
       }
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === currentUser.id);
+        if (u && !u.completedLessons.includes(lessonId)) {
+          u.completedLessons.push(lessonId);
+        }
+      });
+      await handleAddXP(80);
+      alert('Parabéns! Aula marcada como concluída. +80 XP!');
     }
   };
 
@@ -316,6 +812,14 @@ export default function App() {
       date: 'Agora'
     };
 
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const l = db.lessons.find(x => x.id === lessonId);
+        if (l) l.comments.unshift(comm);
+      });
+      await handleAddXP(15);
+      return;
+    }
     try {
       await fetch('/api/lesson/comment', {
         method: 'POST',
@@ -325,11 +829,22 @@ export default function App() {
       await handleAddXP(15); // +15 XP for active commenting
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const l = db.lessons.find(x => x.id === lessonId);
+        if (l) l.comments.unshift(comm);
+      });
+      await handleAddXP(15);
     }
   };
 
   const handleLikeLesson = async (lessonId: string) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const l = db.lessons.find(x => x.id === lessonId);
+        if (l) l.likes += 1;
+      });
+      return;
+    }
     try {
       await fetch('/api/lesson/like', {
         method: 'POST',
@@ -338,7 +853,10 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const l = db.lessons.find(x => x.id === lessonId);
+        if (l) l.likes += 1;
+      });
     }
   };
 
@@ -358,6 +876,13 @@ export default function App() {
       date: 'Agora mesmo'
     };
 
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.posts.unshift(newP);
+      });
+      await handleAddXP(40);
+      return;
+    }
     try {
       await fetch('/api/post', {
         method: 'POST',
@@ -367,11 +892,21 @@ export default function App() {
       await handleAddXP(40); // 40 XP for sharing contents
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.posts.unshift(newP);
+      });
+      await handleAddXP(40);
     }
   };
 
   const handleLikePost = async (postId: string) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const p = db.posts.find(x => x.id === postId);
+        if (p) p.likes += 1;
+      });
+      return;
+    }
     try {
       await fetch('/api/post/like', {
         method: 'POST',
@@ -380,7 +915,10 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const p = db.posts.find(x => x.id === postId);
+        if (p) p.likes += 1;
+      });
     }
   };
 
@@ -393,6 +931,13 @@ export default function App() {
       date: 'Agora'
     };
 
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const p = db.posts.find(x => x.id === postId);
+        if (p) p.replies.push(rep);
+      });
+      return;
+    }
     try {
       await fetch('/api/post/reply', {
         method: 'POST',
@@ -401,15 +946,27 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const p = db.posts.find(x => x.id === postId);
+        if (p) p.replies.push(rep);
+      });
     }
   };
 
   const handleToggleFollow = async (studentId: string) => {
-    try {
-      const isFollowing = followingIds.includes(studentId);
-      setFollowingIds(prev => isFollowing ? prev.filter(id => id !== studentId) : [...prev, studentId]);
+    const isFollowing = followingIds.includes(studentId);
+    setFollowingIds(prev => isFollowing ? prev.filter(id => id !== studentId) : [...prev, studentId]);
 
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const target = db.users.find(u => u.id === studentId);
+        if (target) {
+          target.followersCount = isFollowing ? Math.max(0, target.followersCount - 1) : target.followersCount + 1;
+        }
+      });
+      return;
+    }
+    try {
       await fetch('/api/user/toggle_follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -417,28 +974,57 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const target = db.users.find(u => u.id === studentId);
+        if (target) {
+          target.followersCount = isFollowing ? Math.max(0, target.followersCount - 1) : target.followersCount + 1;
+        }
+      });
     }
   };
 
   // Tournament Handles
   const handleJoinTournament = async (tournamentId: string, email: string) => {
+    triggerSound('gong');
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const t = db.tournaments.find(x => x.id === tournamentId);
+        if (t && !t.participants.includes(email)) {
+          t.participants.push(email);
+          t.registeredUsersCount += 1;
+        }
+      });
+      alert('Sua inscrição foi confirmada no campeonato! Prepare o seu Kumite.');
+      return;
+    }
     try {
       await fetch('/api/tournament/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId, email })
       });
-      triggerSound('gong');
       syncDatabase();
       alert('Sua inscrição foi confirmada no campeonato! Prepare o seu Kumite.');
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const t = db.tournaments.find(x => x.id === tournamentId);
+        if (t && !t.participants.includes(email)) {
+          t.participants.push(email);
+          t.registeredUsersCount += 1;
+        }
+      });
+      alert('Sua inscrição foi confirmada no campeonato! Prepare o seu Kumite.');
     }
   };
 
   // Admin panel state change triggers
   const handleAddLesson = async (newL: Lesson) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.lessons.push(newL);
+      });
+      return;
+    }
     try {
       await fetch('/api/lesson', {
         method: 'POST',
@@ -447,20 +1033,36 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.lessons.push(newL);
+      });
     }
   };
 
   const handleRemoveLesson = async (id: string) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.lessons = db.lessons.filter(x => x.id !== id);
+      });
+      return;
+    }
     try {
       await fetch(`/api/lesson/${id}`, { method: 'DELETE' });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.lessons = db.lessons.filter(x => x.id !== id);
+      });
     }
   };
 
   const handleAddStoreItem = async (newItem: StoreItem) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.storeItems.push(newItem);
+      });
+      return;
+    }
     try {
       await fetch('/api/store_item', {
         method: 'POST',
@@ -469,29 +1071,55 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.storeItems.push(newItem);
+      });
     }
   };
 
   const handleRemoveStoreItem = async (id: string) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.storeItems = db.storeItems.filter(x => x.id !== id);
+      });
+      return;
+    }
     try {
       await fetch(`/api/store_item/${id}`, { method: 'DELETE' });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.storeItems = db.storeItems.filter(x => x.id !== id);
+      });
     }
   };
 
   const handleRemoveStudent = async (id: string) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.users = db.users.filter(x => x.id !== id);
+      });
+      return;
+    }
     try {
       await fetch(`/api/user/${id}`, { method: 'DELETE' });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.users = db.users.filter(x => x.id !== id);
+      });
     }
   };
 
   const handlePromoteStudent = async (id: string, newRole: User['role']) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === id);
+        if (u) u.role = newRole;
+      });
+      alert(`Cargo atualizado com sucesso para: ${newRole.toUpperCase()}!`);
+      return;
+    }
     try {
       const res = await fetch('/api/user/promote', {
         method: 'POST',
@@ -507,11 +1135,21 @@ export default function App() {
         alert(`Cargo atualizado com sucesso para: ${newRole.toUpperCase()}!`);
       }
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === id);
+        if (u) u.role = newRole;
+      });
+      alert(`Cargo atualizado com sucesso para: ${newRole.toUpperCase()}!`);
     }
   };
 
   const handleAddTournament = async (newT: Tournament) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.tournaments.push(newT);
+      });
+      return;
+    }
     try {
       await fetch('/api/tournament', {
         method: 'POST',
@@ -520,20 +1158,31 @@ export default function App() {
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.tournaments.push(newT);
+      });
     }
   };
 
   const handleAddGlobalMessage = async (msg: string) => {
+    const formatted = `📢 COMUNICADO SENSEI: ${msg}`;
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        db.broadcastMessages.unshift(formatted);
+      });
+      return;
+    }
     try {
       await fetch('/api/broadcast_message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `📢 COMUNICADO SENSEI: ${msg}` })
+        body: JSON.stringify({ message: formatted })
       });
       syncDatabase();
     } catch (err) {
-      console.error(err);
+      updateLocalDb(db => {
+        db.broadcastMessages.unshift(formatted);
+      });
     }
   };
 
@@ -594,7 +1243,7 @@ export default function App() {
                     type="email" 
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="joaopedromolaoliveira@gmail.com" 
+                    placeholder="exemplo@lucidadojo.com" 
                     className="w-full bg-black border border-neutral-800 rounded p-3 pl-9 text-white focus:border-rose-650 outline-none transition-all"
                   />
                   <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-3.5" />

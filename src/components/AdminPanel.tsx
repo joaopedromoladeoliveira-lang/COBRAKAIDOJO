@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Shield, Plus, Trash2, Users, Users2, Trophy, DollarSign, Bell, Sparkles, AlertCircle, BookOpen, Trash, UploadCloud, Check, ShoppingBag, Tag, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Plus, Trash2, Users, Users2, Trophy, DollarSign, Bell, Sparkles, AlertCircle, BookOpen, Trash, UploadCloud, Check, ShoppingBag, Tag, Image as ImageIcon, Database, RefreshCw, Terminal } from 'lucide-react';
 import { Lesson, User, Tournament, StoreItem } from '../types';
 
 export const AdminPanel: React.FC<{
@@ -31,7 +31,73 @@ export const AdminPanel: React.FC<{
   onAddStoreItem,
   onRemoveStoreItem
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'lessons' | 'students' | 'tournaments' | 'notifs' | 'store'>('lessons');
+  const [activeSubTab, setActiveSubTab] = useState<'lessons' | 'students' | 'tournaments' | 'notifs' | 'store' | 'supabase'>('lessons');
+
+  // Supabase Integration States
+  const [supabaseStatus, setSupabaseStatus] = useState<{ configured: boolean; connected?: boolean; message?: string; error?: string } | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState<'cloud' | 'local' | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
+  const fetchSupabaseStatus = async () => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch('/api/supabase/status');
+      const data = await res.json();
+      setSupabaseStatus(data);
+    } catch (err) {
+      setSupabaseStatus({ configured: false, message: 'Não foi possível se comunicar com o servidor Dojo.' });
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const syncFromCloud = async () => {
+    if (!window.confirm('Atenção: baixar dados da Nuvem irá substituir todas as informações locais atuais do Dojo e do Fórum. Continuar?')) return;
+    setSyncLoading('cloud');
+    triggerSound('gong');
+    try {
+      const res = await fetch('/api/supabase/sync-from-cloud', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert('OSS! Sincronizado com sucesso! Dados locais atualizados com a Nuvem Supabase.');
+        fetchSupabaseStatus();
+        window.location.reload(); // Quick refresh to load sync data
+      } else {
+        alert('Erro na sincronização: ' + (data.error || 'Erro desconhecido. Verifique no painel Supabase se criou a tabela dojo_state.'));
+      }
+    } catch (err: any) {
+      alert('Falha crítica ao contactar o servidor.');
+    } finally {
+      setSyncLoading(null);
+    }
+  };
+
+  const syncToCloud = async () => {
+    if (!window.confirm('Tem certeza de que quer fazer o Upload (subir)? Isso irá sobrescrever qualquer dado que esteja guardado no Supabase atualmente.')) return;
+    setSyncLoading('local');
+    triggerSound('belt');
+    try {
+      const res = await fetch('/api/supabase/sync-to-cloud', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        alert('OSS! Envio concluído! Todos os dados locais do Dojo foram guardados com êxito na nuvem do Supabase.');
+        fetchSupabaseStatus();
+      } else {
+        alert('Falha ao enviar: ' + (data.error || 'Erro desconhecido. Não foi possível persistir no Supabase.'));
+      }
+    } catch (err: any) {
+      alert('Falha ao contactar o servidor.');
+    } finally {
+      setSyncLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'supabase') {
+      fetchSupabaseStatus();
+    }
+  }, [activeSubTab]);
 
   // Add Lesson Form State
   const [newTitle, setNewTitle] = useState('');
@@ -371,6 +437,12 @@ export const AdminPanel: React.FC<{
         >
           Gerir Loja (Shop)
         </button>
+        <button 
+          onClick={() => { setActiveSubTab('supabase'); triggerSound('nav'); }}
+          className={`pb-2.5 transition-colors uppercase font-bold tracking-wider ${activeSubTab === 'supabase' ? 'border-b-2 border-red-500 text-white' : 'text-neutral-500 hover:text-white'}`}
+        >
+          Integração Supabase
+        </button>
       </div>
 
       {/* Content manage view */}
@@ -679,7 +751,9 @@ export const AdminPanel: React.FC<{
                         {std.role}
                       </span>
                     </div>
-                    <p className="text-[10px] text-neutral-500 mt-1 truncate max-w-sm">Email: {std.email} • Level {std.level} ({std.xp} XP)</p>
+                    <p className="text-[10px] text-neutral-500 mt-1 truncate max-w-sm">
+                      Email: {rootAdmin ? "Omitido por Segurança" : std.email} • Level {std.level} ({std.xp} XP)
+                    </p>
                   </div>
 
                   {/* Promotion choices buttons row */}
@@ -983,6 +1057,175 @@ export const AdminPanel: React.FC<{
             </div>
           </div>
 
+        </div>
+      )}
+
+      {/* Supabase connection manager view */}
+      {activeSubTab === 'supabase' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Connection Status Card */}
+            <div className="lg:col-span-1 bg-neutral-900 border border-neutral-800 p-5 rounded-xl space-y-4">
+              <h4 className="text-xs font-black font-mono text-red-500 uppercase tracking-widest flex items-center gap-1.5">
+                <Database className="w-4 h-4 text-emerald-500 animate-pulse" /> Status do Supabase
+              </h4>
+
+              {statusLoading ? (
+                <div className="flex items-center gap-2 py-4 text-xs font-mono text-neutral-400">
+                  <RefreshCw className="w-4 h-4 animate-spin text-yellow-500" />
+                  Verificando credenciais de nuvem...
+                </div>
+              ) : supabaseStatus ? (
+                <div className="space-y-4 font-mono text-xs">
+                  <div className="bg-black/40 border border-neutral-850 p-3 rounded-lg flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full shrink-0 ${supabaseStatus.connected ? 'bg-emerald-500 animate-pulse' : supabaseStatus.configured ? 'bg-amber-500' : 'bg-neutral-600'}`} />
+                    <div>
+                      <p className="font-bold text-white uppercase text-[10px]">
+                        {supabaseStatus.connected ? 'ATIVO & SINCRO' : supabaseStatus.configured ? 'TABELA INEXISTENTE' : 'OFFLINE / LOCAL'}
+                      </p>
+                      <p className="text-[9px] text-neutral-400 mt-0.5">
+                        {supabaseStatus.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  {supabaseStatus.configured && (
+                    <div className="space-y-2 bg-neutral-950/60 p-3 rounded-lg border border-neutral-800">
+                      <p className="text-[10px] text-neutral-400 uppercase tracking-wider font-bold">Diagnóstico Técnico:</p>
+                      <p className="text-[10px] text-neutral-300">
+                        Configurado no .env: <span className="text-emerald-500 font-bold">Sim ✔</span>
+                      </p>
+                      <p className="text-[10px] text-neutral-300">
+                        Conexão com Banco: {supabaseStatus.connected ? (
+                          <span className="text-emerald-500 font-bold">Ok ✔</span>
+                        ) : (
+                          <span className="text-rose-500 font-bold">Erro ✖</span>
+                        )}
+                      </p>
+                      {supabaseStatus.error && (
+                        <p className="text-[9px] text-red-400 bg-red-950/20 p-1.5 rounded border border-red-900/40 mt-1 max-w-full overflow-x-auto">
+                          Detalhe: {supabaseStatus.error}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {!supabaseStatus.configured && (
+                    <div className="bg-yellow-950/10 p-3 rounded-lg border border-yellow-905/20 text-[10px] text-amber-500/90 leading-relaxed">
+                      💡 Para salvar as aulas, campeonatos, e posts do fórum na nuvem persistentemente de graça, siga o tutorial rápido ao lado.
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={fetchSupabaseStatus}
+                    className="w-full bg-neutral-800 hover:bg-neutral-750 text-white font-bold py-2 rounded flex items-center justify-center gap-1.5 text-[10px] uppercase transition-all"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Atualizar Diagnóstico
+                  </button>
+
+                </div>
+              ) : (
+                <div className="text-xs italic text-neutral-500 font-mono">Status indisponível.</div>
+              )}
+            </div>
+
+            {/* Cloud Storage Synchronization Controls */}
+            <div className="lg:col-span-2 bg-neutral-900 border border-neutral-800 p-5 rounded-xl space-y-4">
+              <h4 className="text-xs font-black font-mono text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                <UploadCloud className="w-4 h-4 text-blue-400" /> Ações de Sincronização em Lote
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sync UP (Local to Cloud) */}
+                <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-850 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <h5 className="text-[11px] font-bold text-white font-mono flex items-center gap-1">
+                      📤 SUBIR DADOS PARA SUPABASE
+                    </h5>
+                    <p className="text-[10px] text-neutral-400 font-mono leading-relaxed">
+                      Envia todas as aulas, alunos, anúncios e fuleiros cadastrados localmente agora para a nuvem. Isso sobrescreve a cópia da nuvem atual.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={syncToCloud}
+                    disabled={syncLoading !== null || !supabaseStatus?.configured}
+                    className="w-full bg-blue-650 hover:bg-blue-600 disabled:opacity-40 disabled:hover:bg-blue-650 text-white font-black py-2.5 rounded-lg text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 font-mono transition"
+                  >
+                    {syncLoading === 'local' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Exportar para Supabase (Upload)'
+                    )}
+                  </button>
+                </div>
+
+                {/* Sync DOWN (Cloud to Local cache) */}
+                <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-850 space-y-3 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <h5 className="text-[11px] font-bold text-white font-mono flex items-center gap-1">
+                      📥 BAIXAR DADOS DA NUVEM
+                    </h5>
+                    <p className="text-[10px] text-neutral-400 font-mono leading-relaxed">
+                      Atualiza o servidor com as informações mais frescas guardadas na nuvem. Útil para restauração após reiniciar a máquina de hospedagem.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={syncFromCloud}
+                    disabled={syncLoading !== null || !supabaseStatus?.configured}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white font-black py-2.5 rounded-lg text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 font-mono transition"
+                  >
+                    {syncLoading === 'cloud' ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Importar do Supabase (Download)'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Steps To configure Supabase */}
+              <div className="bg-neutral-950/80 p-4 rounded-xl border border-neutral-850 space-y-3">
+                <h5 className="text-[11px] font-bold text-yellow-500 font-mono flex items-center gap-1">
+                  <Terminal className="w-4 h-4 text-yellow-500" /> COMO CONECTAR SEU PRÓPRIO SUPABASE NO DOJO
+                </h5>
+                <ol className="text-[10px] text-neutral-400 font-mono space-y-2 list-decimal list-inside leading-relaxed">
+                  <li>Crie uma conta gratuita em <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-yellow-400 underline">supabase.com</a></li>
+                  <li>Crie um novo projeto, vá no menu de <b className="text-white">SQL Editor</b> e crie a tabela rodando o script abaixo:</li>
+                </ol>
+
+                <div className="relative">
+                  <pre className="bg-neutral-900 text-neutral-300 text-[9px] p-3 rounded-lg border border-neutral-800 overflow-x-auto font-mono max-h-36">
+                    {`CREATE TABLE IF NOT EXISTS dojo_state (
+  key text PRIMARY KEY,
+  data jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);`}
+                  </pre>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(`CREATE TABLE IF NOT EXISTS dojo_state (
+  key text PRIMARY KEY,
+  data jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);`);
+                      setCopiedSql(true);
+                      setTimeout(() => setCopiedSql(false), 2000);
+                    }}
+                    className="absolute right-2 top-2 bg-black hover:bg-neutral-800 border border-neutral-700 text-[9px] text-white px-2 py-1 rounded transition"
+                  >
+                    {copiedSql ? 'Copiado!' : 'Copiar Script SQL'}
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-neutral-400 leading-relaxed font-mono pt-1">
+                  🧩 Após criar a tabela, pegue o <span className="text-white font-bold">URL</span> e a <span className="text-white font-bold">Anon Key</span> em <i>Project Settings {'->'} API</i> e defina-os nos segredos da aplicação como <code className="text-yellow-400 bg-neutral-900 px-1 py-0.5 rounded">SUPABASE_URL</code> e <code className="text-yellow-400 bg-neutral-900 px-1 py-0.5 rounded">SUPABASE_ANON_KEY</code>.
+                </div>
+              </div>
+
+            </div>
+
+          </div>
         </div>
       )}
 

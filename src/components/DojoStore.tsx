@@ -364,7 +364,7 @@ export const DojoStore: React.FC<{
           <div className="space-y-2 font-mono text-xs text-neutral-300">
             <p className="text-yellow-500 font-bold">Chave Aleatória de Pagamento (Cópia-e-Cola):</p>
             <div className="bg-black border border-neutral-800 p-2.5 rounded text-[10px] truncate">
-              00020126580014br.gov.pix0136joaopedromoladeoliveira@gmail.com5538054cai
+              00020126580014br.gov.pix0136pix@cobrakaischolar.com.br5538054cai
             </div>
           </div>
 
