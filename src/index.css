@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700;800&family=Cinzel:wght@600;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom Sophisticated Dark Style Utilities */
+.gold-glow { 
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.4); 
+}
+.red-glow { 
+  box-shadow: 0 0 15px rgba(225, 29, 72, 0.5); 
+}
+.smoke-bg { 
+  background: radial-gradient(circle at 50% 50%, #151515 0%, #050505 100%); 
+}
+.netflix-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.netflix-card:hover { 
+  transform: scale(1.04); 
+  border-color: #e11d48; 
+  box-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.3);
+}
+
+/* Custom marquee keyframes for notifications scroll bar */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  display: inline-block;
+  animation: marquee 25s linear infinite;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  background-color: #050505;
+  color: #f5f5f5;
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090909;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e11d48;
+}

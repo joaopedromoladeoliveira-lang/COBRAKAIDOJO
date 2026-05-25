@@ -1,0 +1,6 @@
+{
+  "name": "Cobra Kai Shotokan Dojo",
+  "description": "Uma plataforma cinematográfica e moderna inspirada no universo Cobra Kai e Shotokan Karate, unindo streaming de aulas, IA Sensei, torneios, comunidade dojo interna e loja oficial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
