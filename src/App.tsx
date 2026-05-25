@@ -434,6 +434,10 @@ export default function App() {
       if (!res.ok) {
         throw new Error(`Server status not ok: ${res.status}`);
       }
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Not local API server or offline fallback');
+      }
       const data = await res.json();
       if (data) {
         if (data.users) setStudents(data.users);
@@ -494,8 +498,12 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: savedEmail })
       })
-      .then(res => {
+      .then(async res => {
         if (!res.ok) throw new Error('Restoration API not responsive');
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Not local API server');
+        }
         return res.json();
       })
       .then(user => {
@@ -572,6 +580,10 @@ export default function App() {
       body: JSON.stringify(bodyObj)
     })
     .then(async res => {
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('Server connection offline or API route missing on static hosting environment.');
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Erro na autenticação.');
@@ -595,7 +607,12 @@ export default function App() {
       const isNetworkError = err.message.toLowerCase().includes('failed to fetch') || 
                              err.message.toLowerCase().includes('networkerror') || 
                              err.message.toLowerCase().includes('network error') ||
-                             err.message.toLowerCase().includes('cors');
+                             err.message.toLowerCase().includes('cors') ||
+                             err.message.toLowerCase().includes('not valid json') ||
+                             err.message.toLowerCase().includes('unexpected token') ||
+                             err.message.toLowerCase().includes('missing on static') ||
+                             err.message.toLowerCase().includes('offline') ||
+                             err.message.toLowerCase().includes('status not ok');
 
       if (!isNetworkError) {
         alert(err.message); // This blocks the login flow and does NOT approve dashboard entry!
@@ -701,74 +718,7 @@ export default function App() {
     });
   };
 
-  const handleThirdPartyMockLogin = (type: 'Google' | 'Discord') => {
-    // Google triggers real direct register for joaopedromoladeoliveira@gmail.com
-    fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'joaopedromoladeoliveira@gmail.com', name: 'João Pedro M. Oliveira' })
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Third-party API failed');
-      return res.json();
-    })
-    .then(user => {
-      if (user && !user.error) {
-        setCurrentUser(user);
-        setIsLoggedIn(true);
-        localStorage.setItem('karate_session_email', user.email);
-        syncDatabase();
-      }
-    })
-    .catch(err => {
-      console.warn('Third party register API failed, using LocalStorage authentication instead.');
-      setIsOfflineMode(true);
-      
-      const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
-      let localDb;
-      try {
-        localDb = JSON.parse(localDbStr);
-      } catch (ex) {
-        localDb = DEFAULT_LOCAL_DB;
-      }
-      
-      let existing = localDb.users.find((u: any) => u.email.toLowerCase() === 'joaopedromoladeoliveira@gmail.com');
-      if (!existing) {
-        existing = {
-          id: 'student-1',
-          name: 'João Pedro M. Oliveira',
-          email: 'joaopedromoladeoliveira@gmail.com',
-          role: 'admin',
-          belt: 'preta',
-          xp: 850,
-          level: 15,
-          enrolledDate: '2025-01-20',
-          completedLessons: ['kihon-1', 'kata-1'],
-          certificates: ['cert-1'],
-          followersCount: 228,
-          followingCount: 42,
-          country: 'Brasil',
-          wins: 14,
-          losses: 2,
-          trophies: 3,
-          streak: 5
-        };
-        localDb.users.push(existing);
-        localStorage.setItem('karate_local_db', JSON.stringify(localDb));
-      }
-      
-      setCurrentUser(existing);
-      setIsLoggedIn(true);
-      localStorage.setItem('karate_session_email', existing.email);
-      
-      setStudents(localDb.users);
-      setLessons(localDb.lessons);
-      setStoreItems(localDb.storeItems);
-      setTournaments(localDb.tournaments);
-      setPosts(localDb.posts);
-      setBroadcastMessages(localDb.broadcastMessages);
-    });
-  };
+
 
   const handleLogout = () => {
     triggerSound('punch');
@@ -1413,24 +1363,7 @@ export default function App() {
             </form>
           )}
 
-          {/* SSO Mock login buttons */}
-          <div className="space-y-2.5 pt-4 border-t border-white/10">
-            <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block">Ou entre com plataformas</span>
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono text-neutral-400">
-              <button 
-                onClick={() => handleThirdPartyMockLogin('Google')}
-                className="bg-neutral-900/60 hover:bg-neutral-800 border border-white/5 p-2.5 rounded-lg text-[10px] hover:text-white transition-all"
-              >
-                Login com Google
-              </button>
-              <button 
-                onClick={() => handleThirdPartyMockLogin('Discord')}
-                className="bg-neutral-900/60 hover:bg-neutral-800 border border-white/5 p-2.5 rounded-lg text-[10px] hover:text-white transition-all"
-              >
-                Login com Discord
-              </button>
-            </div>
-          </div>
+
 
         </div>
       </div>
