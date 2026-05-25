@@ -2,6 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string;
   role: 'student' | 'sensei' | 'admin';
   belt: 'branca' | 'amarela' | 'vermelha' | 'laranja' | 'verde' | 'roxa' | 'marrom' | 'preta';
   xp: number;

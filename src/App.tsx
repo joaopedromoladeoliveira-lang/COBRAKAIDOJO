@@ -547,17 +547,36 @@ export default function App() {
     triggerSound('gong');
 
     const emailInput = authEmail.trim();
-    const emailToUse = emailInput || 'aluno@dojo.com';
     const nameToUse = authName.trim() || 'Alexandre Silva';
+    const passwordToUse = authPassword;
 
-    fetch('/api/auth/register', {
+    if (!emailInput) {
+      alert('Por favor, preencha o seu e-mail!');
+      return;
+    }
+    if (!passwordToUse) {
+      alert('Por favor, digite a sua senha para autenticação!');
+      return;
+    }
+
+    const emailToUse = emailInput;
+
+    const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
+    const bodyObj = isRegistering 
+      ? { email: emailToUse, name: nameToUse, password: passwordToUse }
+      : { email: emailToUse, password: passwordToUse };
+
+    fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailToUse, name: nameToUse })
+      body: JSON.stringify(bodyObj)
     })
-    .then(res => {
-      if (!res.ok) throw new Error('API registration failed');
-      return res.json();
+    .then(async res => {
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erro na autenticação.');
+      }
+      return data;
     })
     .then(user => {
       if (user && !user.error) {
@@ -566,11 +585,24 @@ export default function App() {
         localStorage.setItem('karate_session_email', user.email);
         syncDatabase();
       } else {
-        alert('Erro ao realizar o login.');
+        alert(user?.error || 'Erro ao realizar o login.');
       }
     })
     .catch(err => {
-      console.warn('Register API unavailable, falling back to local simulation database.');
+      console.warn('Auth API failed or returned error, evaluating offline mode or error details.', err.message);
+      
+      // Check if it is a real validation error from the backend instead of a network/connection failure
+      const isNetworkError = err.message.toLowerCase().includes('failed to fetch') || 
+                             err.message.toLowerCase().includes('networkerror') || 
+                             err.message.toLowerCase().includes('network error') ||
+                             err.message.toLowerCase().includes('cors');
+
+      if (!isNetworkError) {
+        alert(err.message); // This blocks the login flow and does NOT approve dashboard entry!
+        return;
+      }
+
+      console.log('Falling back to local simulation database authorized check.');
       setIsOfflineMode(true);
       
       const localDbStr = localStorage.getItem('karate_local_db') || JSON.stringify(DEFAULT_LOCAL_DB);
@@ -582,12 +614,19 @@ export default function App() {
       }
       
       let existing = localDb.users.find((u: any) => u.email.toLowerCase() === emailToUse.toLowerCase());
-      if (!existing) {
+      
+      if (isRegistering) {
+        if (existing) {
+          alert('Este e-mail já está cadastrado no banco local offline. Por favor, tente fazer login.');
+          return;
+        }
+        
         const isOwnerAdmin = emailToUse.toLowerCase() === 'joaopedromoladeoliveira@gmail.com' || emailToUse.toLowerCase() === 'joaopedromolaoliveira@gmail.com';
         existing = {
           id: 'student-' + Date.now().toString(),
           name: nameToUse,
           email: emailToUse.toLowerCase(),
+          password: passwordToUse,
           role: isOwnerAdmin ? 'admin' : 'student',
           belt: isOwnerAdmin ? 'preta' : 'branca',
           xp: 120,
@@ -605,6 +644,48 @@ export default function App() {
         };
         localDb.users.push(existing);
         localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+        alert('Matrícula realizada com sucesso na base local!');
+      } else {
+        // Login mode
+        if (!existing) {
+          const isOwnerAdmin = emailToUse.toLowerCase() === 'joaopedromoladeoliveira@gmail.com' || emailToUse.toLowerCase() === 'joaopedromolaoliveira@gmail.com';
+          if (isOwnerAdmin) {
+            existing = {
+              id: 'student-1',
+              name: 'João Pedro M. Oliveira',
+              email: 'joaopedromoladeoliveira@gmail.com',
+              password: passwordToUse,
+              role: 'admin',
+              belt: 'preta',
+              xp: 850,
+              level: 15,
+              enrolledDate: '2025-01-20',
+              completedLessons: ['kihon-1', 'kata-1'],
+              certificates: ['cert-1'],
+              followersCount: 228,
+              followingCount: 42,
+              country: 'Brasil',
+              wins: 14,
+              losses: 2,
+              trophies: 3,
+              streak: 5
+            };
+            localDb.users.push(existing);
+            localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+          } else {
+            alert('Conta não encontrada localmente. Crie uma nova matrícula!');
+            return;
+          }
+        } else {
+          if (existing.password && passwordToUse && existing.password !== passwordToUse) {
+            alert('Senha incorreta! Por favor, tente novamente.');
+            return;
+          }
+          if (!existing.password && passwordToUse) {
+            existing.password = passwordToUse;
+            localStorage.setItem('karate_local_db', JSON.stringify(localDb));
+          }
+        }
       }
       
       setCurrentUser(existing);
@@ -1111,6 +1192,50 @@ export default function App() {
     }
   };
 
+  const handleUpdateStudentDetails = async (id: string, updatedFields: { xp?: number; level?: number; belt?: User['belt']; role?: User['role'] }) => {
+    if (isOfflineMode) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === id);
+        if (u) {
+          if (updatedFields.xp !== undefined) u.xp = updatedFields.xp;
+          if (updatedFields.level !== undefined) u.level = updatedFields.level;
+          if (updatedFields.belt !== undefined) u.belt = updatedFields.belt;
+          if (updatedFields.role !== undefined) u.role = updatedFields.role;
+        }
+      });
+      alert('Dados do aluno atualizados localmente!');
+      return;
+    }
+    try {
+      const res = await fetch('/api/users/update-admin-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, ...updatedFields })
+      });
+      const updated = await res.json();
+      if (updated && !updated.error) {
+        if (id === currentUser.id) {
+          setCurrentUser(updated);
+        }
+        syncDatabase();
+        alert('Dados do aluno salvos com sucesso!');
+      } else {
+        alert('Erro ao salvar os novos dados.');
+      }
+    } catch (err) {
+      updateLocalDb(db => {
+        const u = db.users.find(x => x.id === id);
+        if (u) {
+          if (updatedFields.xp !== undefined) u.xp = updatedFields.xp;
+          if (updatedFields.level !== undefined) u.level = updatedFields.level;
+          if (updatedFields.belt !== undefined) u.belt = updatedFields.belt;
+          if (updatedFields.role !== undefined) u.role = updatedFields.role;
+        }
+      });
+      alert('Dados do aluno salvos na base offline do dispositivo!');
+    }
+  };
+
   const handlePromoteStudent = async (id: string, newRole: User['role']) => {
     if (isOfflineMode) {
       updateLocalDb(db => {
@@ -1349,6 +1474,26 @@ export default function App() {
 
           {/* Quick status progress widgets & config bar */}
           <div className="flex items-center flex-wrap gap-4 text-xs font-mono">
+            {/* Logged in User Identity & Role Tag */}
+            <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-left flex flex-col justify-center">
+              <span className="text-white font-extrabold text-[11px] leading-tight block">{currentUser.name}</span>
+              <div className="flex items-center gap-1.5 mt-1">
+                {currentUser.role === 'admin' ? (
+                  <span className="bg-red-950/60 border border-red-500 text-red-400 text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase">
+                    🥋 ADMIN
+                  </span>
+                ) : currentUser.role === 'sensei' ? (
+                  <span className="bg-amber-950/60 border border-amber-500 text-amber-400 text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase">
+                    🥋 SENSEI
+                  </span>
+                ) : (
+                  <span className="bg-blue-950/60 border border-blue-500 text-blue-400 text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase">
+                    🥋 ALUNO
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* XP widget */}
             <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-lg border border-white/10 text-left backdrop-blur-sm shadow-lg">
               <div className="w-8 h-8 rounded-full border-2 border-amber-500 flex items-center justify-center font-bold text-amber-500 text-[10px] bg-black">
@@ -1562,6 +1707,7 @@ export default function App() {
               students={students}
               onRemoveStudent={handleRemoveStudent}
               onPromoteStudent={handlePromoteStudent}
+              onUpdateStudentDetails={handleUpdateStudentDetails}
               tournaments={tournaments}
               onAddTournament={handleAddTournament}
               triggerSound={triggerSound}

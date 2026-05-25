@@ -20,6 +20,25 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 // Serve static uploaded videos/photos under /uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Serve the user's uploaded logo images directly to human eyes
+app.get('/input_file_0.png', (req, res) => {
+  const filePath = path.join(process.cwd(), 'input_file_0.png');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Logo Team Paulo Souza not found');
+  }
+});
+
+app.get('/input_file_1.png', (req, res) => {
+  const filePath = path.join(process.cwd(), 'input_file_1.png');
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Logo Cobra Kai not found');
+  }
+});
+
 // Shared Gemini AI platform instance
 const apiKey = process.env.GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -130,7 +149,7 @@ app.post('/api/supabase/sync-to-cloud', async (req, res) => {
 
 // POST /api/auth/register - Register a real user
 app.post('/api/auth/register', (req, res) => {
-  const { email, name, role, belt } = req.body;
+  const { email, name, password, role, belt } = req.body;
   if (!email || !name) {
     return res.status(400).json({ error: 'Faltam dados obrigatórios para registro.' });
   }
@@ -139,7 +158,7 @@ app.post('/api/auth/register', (req, res) => {
   const existingUser = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
   
   if (existingUser) {
-    return res.json(existingUser);
+    return res.status(400).json({ error: 'Este e-mail já está cadastrado. Por favor, use a tela de Login.' });
   }
 
   const isOwnerAdmin = email.toLowerCase() === 'joaopedromoladeoliveira@gmail.com' || email.toLowerCase() === 'joaopedromolaoliveira@gmail.com';
@@ -148,6 +167,7 @@ app.post('/api/auth/register', (req, res) => {
     id: 'student-' + Date.now().toString(),
     name,
     email: email.toLowerCase(),
+    password: password || '',
     role: isOwnerAdmin ? 'admin' : (role || 'student'),
     belt: isOwnerAdmin ? 'preta' : (belt || 'branca'),
     xp: 0,
@@ -171,41 +191,27 @@ app.post('/api/auth/register', (req, res) => {
 
 // POST /api/auth/login - Real login
 app.post('/api/auth/login', (req, res) => {
-  const { email } = req.body;
+  const { email, password } = req.body;
   if (!email) {
     return res.status(400).json({ error: 'Email é necessário para o login.' });
   }
 
   const db = readDb();
-  const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  let user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
   if (user) {
+    if (user.password && password && user.password !== password) {
+      return res.status(401).json({ error: 'Senha incorreta! Por favor, tente novamente de maneira correta.' });
+    }
+    // Set password if not already present
+    if (!user.password && password) {
+      user.password = password;
+      writeDb(db);
+    }
     res.json(user);
   } else {
-    // If user is joaopedromoladeoliveira, auto-register him as admin
-    const isOwnerAdmin = email.toLowerCase() === 'joaopedromoladeoliveira@gmail.com' || email.toLowerCase() === 'joaopedromolaoliveira@gmail.com';
-    const newUser: User = {
-      id: 'student-' + Date.now().toString(),
-      name: isOwnerAdmin ? 'Alexandre Silva' : 'Novo Aluno',
-      email: email.toLowerCase(),
-      role: isOwnerAdmin ? 'admin' : 'student',
-      belt: isOwnerAdmin ? 'preta' : 'branca',
-      xp: 0,
-      level: 1,
-      enrolledDate: new Date().toISOString().split('T')[0],
-      completedLessons: [],
-      certificates: [],
-      followersCount: 0,
-      followingCount: 0,
-      country: 'Brasil',
-      wins: 0,
-      losses: 0,
-      trophies: 0,
-      streak: 1
-    };
-    db.users.push(newUser);
-    writeDb(db);
-    res.json(newUser);
+    // Under user request, if the user doesn't exist, we do NOT auto-register them anymore.
+    res.status(404).json({ error: 'Usuário não encontrado no banco de dados do Dojo! Por favor, realize a matrícula clicando no botão "Criar Nova Matrícula" abaixo.' });
   }
 });
 
@@ -244,6 +250,29 @@ app.post('/api/users/graduate', (req, res) => {
   }
 
   db.users[uIndex].belt = belt;
+  writeDb(db);
+  res.json(db.users[uIndex]);
+});
+
+// POST /api/users/update-admin-details
+app.post('/api/users/update-admin-details', (req, res) => {
+  const { userId, xp, level, belt, role } = req.body;
+  const db = readDb();
+  const uIndex = db.users.findIndex(u => u.id === userId);
+  
+  if (uIndex === -1) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  const user = db.users[uIndex];
+  db.users[uIndex] = {
+    ...user,
+    xp: xp !== undefined ? Number(xp) : user.xp,
+    level: level !== undefined ? Number(level) : user.level,
+    belt: belt !== undefined ? belt : user.belt,
+    role: role !== undefined ? role : user.role
+  };
+
   writeDb(db);
   res.json(db.users[uIndex]);
 });

@@ -9,6 +9,7 @@ export const AdminPanel: React.FC<{
   students: User[];
   onRemoveStudent: (id: string) => void;
   onPromoteStudent: (id: string, newRole: User['role']) => void;
+  onUpdateStudentDetails?: (id: string, updatedFields: { xp?: number; level?: number; belt?: User['belt']; role?: User['role'] }) => void;
   tournaments: Tournament[];
   onAddTournament: (newT: Tournament) => void;
   triggerSound: (type: 'nav' | 'punch' | 'belt' | 'gong') => void;
@@ -23,6 +24,7 @@ export const AdminPanel: React.FC<{
   students,
   onRemoveStudent,
   onPromoteStudent,
+  onUpdateStudentDetails,
   tournaments,
   onAddTournament,
   triggerSound,
@@ -98,6 +100,13 @@ export const AdminPanel: React.FC<{
       fetchSupabaseStatus();
     }
   }, [activeSubTab]);
+
+  // Inline student Profile editing states (faça que o admin edite o nivel da faixa e xp de qualquer usuario)
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editXp, setEditXp] = useState<number>(0);
+  const [editLevel, setEditLevel] = useState<number>(1);
+  const [editBelt, setEditBelt] = useState<User['belt']>('branca');
+  const [editRole, setEditRole] = useState<User['role']>('student');
 
   // Add Lesson Form State
   const [newTitle, setNewTitle] = useState('');
@@ -740,57 +749,166 @@ export const AdminPanel: React.FC<{
               const rootAdmin = std.email === 'joaopedromoladeoliveira@gmail.com' || std.email === 'joaopedromolaoliveira@gmail.com';
 
               return (
-                <div key={std.id} className="bg-neutral-950 p-4 border border-neutral-850 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="min-w-0 text-left">
-                    <div className="flex items-center gap-2">
-                      <h5 className="text-sm font-bold text-white">{std.name}</h5>
-                      <span className="text-[8px] bg-red-950 text-red-400 font-black px-1.5 py-0.5 rounded uppercase leading-none">
-                        {std.belt}
-                      </span>
-                      <span className="text-[8px] bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded uppercase font-bold">
-                        {std.role}
-                      </span>
+                <div key={std.id} className="bg-neutral-950 border border-neutral-850 rounded-xl overflow-hidden transition-all">
+                  <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-sm font-bold text-white">{std.name}</h5>
+                        <span className="text-[8px] bg-red-950 text-red-400 font-black px-1.5 py-0.5 rounded uppercase leading-none">
+                          {std.belt}
+                        </span>
+                        <span className="text-[8px] bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded uppercase font-bold">
+                          {std.role}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-neutral-500 mt-1 truncate max-w-sm">
+                        Email: {rootAdmin ? "Omitido por Segurança" : std.email} • Level {std.level} ({std.xp} XP)
+                      </p>
                     </div>
-                    <p className="text-[10px] text-neutral-500 mt-1 truncate max-w-sm">
-                      Email: {rootAdmin ? "Omitido por Segurança" : std.email} • Level {std.level} ({std.xp} XP)
-                    </p>
+
+                    {/* Promotion choices buttons row */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {rootAdmin ? (
+                        <span className="text-[9px] text-neutral-600 uppercase border border-neutral-850 px-2.5 py-1 rounded">Administrador Principal</span>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => {
+                              triggerSound('nav');
+                              if (editingStudentId === std.id) {
+                                setEditingStudentId(null);
+                              } else {
+                                setEditingStudentId(std.id);
+                                setEditXp(std.xp || 0);
+                                setEditLevel(std.level || 1);
+                                setEditBelt(std.belt || 'branca');
+                                setEditRole(std.role || 'student');
+                              }
+                            }}
+                            className={`text-[9px] font-bold px-2.5 py-1 border rounded uppercase transition-all ${editingStudentId === std.id ? 'bg-yellow-500 text-black border-yellow-500 font-extrabold' : 'bg-neutral-900 border-neutral-800 text-yellow-500 hover:bg-neutral-800'}`}
+                          >
+                            {editingStudentId === std.id ? 'Fechar' : '✏️ Editar'}
+                          </button>
+
+                          <button 
+                            onClick={() => { onPromoteStudent(std.id, 'student'); triggerSound('nav'); }}
+                            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'student' ? 'bg-neutral-800 border-neutral-700 text-white' : 'border-neutral-800 text-neutral-500'}`}
+                          >
+                            Membro
+                          </button>
+                          <button 
+                            onClick={() => { onPromoteStudent(std.id, 'sensei'); triggerSound('belt'); }}
+                            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'sensei' ? 'bg-orange-500/20 border-orange-600 text-orange-400' : 'border-neutral-800 text-neutral-500'}`}
+                          >
+                            SENSEI
+                          </button>
+                          <button 
+                            onClick={() => { onPromoteStudent(std.id, 'admin'); triggerSound('gong'); }}
+                            className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'admin' ? 'bg-red-600 border-red-500 text-white' : 'border-red-900/30 text-red-500 hover:text-white hover:bg-red-500/20'}`}
+                          >
+                            Tornar ADMIN
+                          </button>
+
+                          <button 
+                            onClick={() => { onRemoveStudent(std.id); triggerSound('punch'); }}
+                            className="p-1 px-2 border border-red-950 hover:bg-red-950/20 rounded text-red-500 transition-all text-[8px] font-bold uppercase shrink-0"
+                            title="Remover Aluno"
+                          >
+                            Banir
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Promotion choices buttons row */}
-                  <div className="flex items-center gap-2">
-                    {rootAdmin ? (
-                      <span className="text-[9px] text-neutral-600 uppercase border border-neutral-850 px-2.5 py-1 rounded">Administrador Principal</span>
-                    ) : (
-                      <>
-                        <button 
-                          onClick={() => { onPromoteStudent(std.id, 'student'); triggerSound('nav'); }}
-                          className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'student' ? 'bg-neutral-800 border-neutral-700 text-white' : 'border-neutral-800 text-neutral-500'}`}
-                        >
-                          Membro
-                        </button>
-                        <button 
-                          onClick={() => { onPromoteStudent(std.id, 'sensei'); triggerSound('belt'); }}
-                          className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'sensei' ? 'bg-orange-500/20 border-orange-600 text-orange-400' : 'border-neutral-800 text-neutral-500'}`}
-                        >
-                          SENSEI
-                        </button>
-                        <button 
-                          onClick={() => { onPromoteStudent(std.id, 'admin'); triggerSound('gong'); }}
-                          className={`text-[9px] font-bold px-2 py-1 border rounded uppercase ${std.role === 'admin' ? 'bg-red-600 border-red-500 text-white' : 'border-red-900/30 text-red-500 hover:text-white hover:bg-red-500/20'}`}
-                        >
-                          Tornar ADMIN
-                        </button>
+                  {/* Inline edit panel if selected (faça que o admin edite o nivel da faixa e xp de qualquer usuario) */}
+                  {editingStudentId === std.id && (
+                    <div className="bg-neutral-900 border-t border-neutral-850 p-4 space-y-3 font-sans text-xs text-neutral-300">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {/* XP Edit */}
+                        <div className="flex flex-col gap-1 text-left">
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase font-mono tracking-wider">XP Atual</label>
+                          <input 
+                            type="number"
+                            value={editXp}
+                            onChange={(e) => setEditXp(Number(e.target.value))}
+                            className="bg-neutral-950 text-white border border-neutral-850 rounded px-2.5 py-1.5 focus:outline-none focus:border-yellow-500 text-xs font-mono"
+                          />
+                        </div>
 
+                        {/* Level Edit */}
+                        <div className="flex flex-col gap-1 text-left">
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase font-mono tracking-wider">Nível</label>
+                          <input 
+                            type="number"
+                            value={editLevel}
+                            onChange={(e) => setEditLevel(Number(e.target.value))}
+                            className="bg-neutral-950 text-white border border-neutral-850 rounded px-2.5 py-1.5 focus:outline-none focus:border-yellow-500 text-xs font-mono"
+                          />
+                        </div>
+
+                        {/* Belt Edit */}
+                        <div className="flex flex-col gap-1 text-left">
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase font-mono tracking-wider">Faixa</label>
+                          <select 
+                            value={editBelt}
+                            onChange={(e) => setEditBelt(e.target.value as User['belt'])}
+                            className="bg-neutral-950 text-white border border-neutral-850 rounded px-2 py-1.5 focus:outline-none focus:border-yellow-500 text-xs font-mono"
+                          >
+                            <option value="branca">Branca</option>
+                            <option value="amarela">Amarela</option>
+                            <option value="vermelha">Vermelha</option>
+                            <option value="laranja">Laranja</option>
+                            <option value="verde">Verde</option>
+                            <option value="roxa">Roxa</option>
+                            <option value="marrom">Marrom</option>
+                            <option value="preta">Preta</option>
+                          </select>
+                        </div>
+
+                        {/* Role Edit */}
+                        <div className="flex flex-col gap-1 text-left">
+                          <label className="text-[10px] font-bold text-neutral-400 uppercase font-mono tracking-wider">Cargo</label>
+                          <select 
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as User['role'])}
+                            className="bg-neutral-950 text-white border border-neutral-850 rounded px-2 py-1.5 focus:outline-none focus:border-yellow-500 text-xs font-mono"
+                          >
+                            <option value="student font-sans">Aluno (Membro)</option>
+                            <option value="sensei font-sans">Sensei</option>
+                            <option value="admin font-sans">Administrador</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Control buttons */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-850">
                         <button 
-                          onClick={() => { onRemoveStudent(std.id); triggerSound('punch'); }}
-                          className="p-1 px-2 border border-red-950 hover:bg-red-950/20 rounded text-red-500 transition-all text-[8px] font-bold uppercase shrink-0"
-                          title="Remover Aluno"
+                          onClick={() => { triggerSound('nav'); setEditingStudentId(null); }}
+                          className="bg-neutral-950 hover:bg-neutral-800 text-neutral-400 font-mono text-[10px] px-3 py-1.5 rounded uppercase border border-neutral-800 font-bold"
                         >
-                          Banir
+                          Cancelar
                         </button>
-                      </>
-                    )}
-                  </div>
+                        <button 
+                          onClick={() => {
+                            triggerSound('gong');
+                            if (onUpdateStudentDetails) {
+                              onUpdateStudentDetails(std.id, {
+                                xp: editXp,
+                                level: editLevel,
+                                belt: editBelt,
+                                role: editRole
+                              });
+                            }
+                            setEditingStudentId(null);
+                          }}
+                          className="bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-mono text-[10px] px-4 py-1.5 rounded uppercase font-black tracking-wider flex items-center gap-1.5 shadow"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Salvar Alterações
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
